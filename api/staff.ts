@@ -1,6 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { handleOptions, sendError, sendJson } from '../lib/apiHelpers';
-import { listStaff } from '../lib/repository';
+import { handleApiRequest } from '../lib/apiRoutes';
+
+function applyResult(res: VercelResponse, result: Awaited<ReturnType<typeof handleApiRequest>>) {
+  if (result.ok) {
+    sendJson(res, result.status, result.data);
+  } else {
+    sendError(res, result.status, result.error);
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
@@ -10,11 +18,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  try {
-    const staff = await listStaff();
-    sendJson(res, 200, staff);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : '取得に失敗しました';
-    sendError(res, 500, message);
-  }
+  applyResult(res, await handleApiRequest('GET', '/api/staff'));
 }

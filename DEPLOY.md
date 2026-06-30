@@ -112,12 +112,19 @@ npm run db:setup
 npm run dev
 ```
 
+次の **2つ** が同時に起動します。
+
+| プロセス | ポート | 役割 |
+|---------|--------|------|
+| API サーバー | 3001 | データベースへの読み書き |
+| 画面（Vite） | 5173 | ブラウザ表示 |
+
 ブラウザで http://localhost:5173 を開きます。
 
 - 候補者リストが表示されれば成功
 - 編集・保存してリロードしてもデータが残ることを確認
 
-> `npm run dev` は Vercel CLI を使い、画面（Vite）と API（`/api/*`）を同時に起動します。
+> ターミナルに `[api] ✅ ローカル API サーバー` と `[ui] Local: http://localhost:5173/` が **両方** 出ていることを確認してください。
 
 ---
 
@@ -218,12 +225,24 @@ https://あなたのURL.vercel.app/api/health
 
 ### ローカルで `npm run dev` が動かない
 
+ターミナルに `[api]` と `[ui]` の **両方** が表示されているか確認してください。
+
 ```bash
-npx vercel login
+npm install
 npm run dev
 ```
 
-Vercel CLI へのログインが必要な場合があります。
+API 単体の確認：
+
+```bash
+npm run dev:api
+```
+
+別ターミナルで http://localhost:3001/api/health を開き、`{"ok":true,...}` が表示されれば DB 接続 OK です。
+
+### 以前の `vercel dev` を使っていた場合
+
+ローカル開発は `npm run dev`（Vite + ローカル API）に変更しました。Vercel 本番デプロイには影響ありません。
 
 ### `npm run db:setup` でエラー
 

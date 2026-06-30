@@ -62,7 +62,8 @@ scripts/          # DB セットアップ
 
 | コマンド | 説明 |
 |---------|------|
-| `npm run dev` | ローカル開発（Vite + API） |
+| `npm run dev` | ローカル開発（API + 画面を同時起動） |
+| `npm run dev:api` | API サーバーのみ（ポート 3001） |
 | `npm run dev:ui` | 画面のみ（API なし・通常は使わない） |
 | `npm run build` | 本番ビルド |
 | `npm run db:setup` | DB テーブル作成 + サンプルデータ投入 |

@@ -7,17 +7,26 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     ...options,
   });
+  const text = await res.text();
+  let data: unknown;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    throw new Error(
+      `API が JSON 以外を返しました（${res.status}）。npm run dev で API サーバーが起動しているか確認してください。`,
+    );
+  }
   if (!res.ok) {
-    let message = `API error (${res.status})`;
-    try {
-      const data = (await res.json()) as { error?: string };
-      if (data.error) message = data.error;
-    } catch {
-      // ignore
-    }
+    const message =
+      typeof data === 'object' &&
+      data !== null &&
+      'error' in data &&
+      typeof (data as { error: unknown }).error === 'string'
+        ? (data as { error: string }).error
+        : `API error (${res.status})`;
     throw new Error(message);
   }
-  return res.json() as Promise<T>;
+  return data as T;
 }
 
 export async function checkHealth(): Promise<{ ok: boolean; message: string }> {

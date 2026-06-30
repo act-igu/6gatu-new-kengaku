@@ -1,20 +1,23 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { checkDbConnection } from '../lib/db';
-import { handleOptions, sendError, sendJson } from '../lib/apiHelpers';
+import { handleOptions, readJsonBody, sendError, sendJson } from '../lib/apiHelpers';
+import { handleApiRequest } from '../lib/apiRoutes';
+
+function applyResult(res: VercelResponse, result: Awaited<ReturnType<typeof handleApiRequest>>) {
+  if (result.ok) {
+    sendJson(res, result.status, result.data);
+  } else {
+    sendError(res, result.status, result.error);
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
 
+  const pathname = '/api/health';
   if (req.method !== 'GET') {
     sendError(res, 405, 'Method not allowed');
     return;
   }
 
-  try {
-    await checkDbConnection();
-    sendJson(res, 200, { ok: true, message: 'データベース接続 OK' });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : '接続エラー';
-    sendError(res, 500, message);
-  }
+  applyResult(res, await handleApiRequest(req.method ?? 'GET', pathname));
 }

@@ -4,9 +4,16 @@ import {
   readJsonBody,
   sendError,
   sendJson,
-} from '../../lib/apiHelpers';
-import { appendMemo } from '../../lib/repository';
-import { CURRENT_STAFF_ID } from '../../src/data/mockData';
+} from '../../../lib/apiHelpers';
+import { handleApiRequest } from '../../../lib/apiRoutes';
+
+function applyResult(res: VercelResponse, result: Awaited<ReturnType<typeof handleApiRequest>>) {
+  if (result.ok) {
+    sendJson(res, result.status, result.data);
+  } else {
+    sendError(res, result.status, result.error);
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
@@ -22,26 +29,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  try {
-    const body = await readJsonBody<{
-      body?: string;
-      author_staff_id?: string;
-    }>(req);
-
-    if (!body.body?.trim()) {
-      sendError(res, 400, 'body が必要です');
-      return;
-    }
-
-    const authorId = body.author_staff_id ?? CURRENT_STAFF_ID;
-    const updated = await appendMemo(id, body.body.trim(), authorId);
-    if (!updated) {
-      sendError(res, 404, '候補者が見つかりません');
-      return;
-    }
-    sendJson(res, 200, updated);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : '処理に失敗しました';
-    sendError(res, 500, message);
-  }
+  const body = await readJsonBody<unknown>(req);
+  applyResult(
+    res,
+    await handleApiRequest('POST', `/api/candidates/${id}/memos`, body),
+  );
 }
