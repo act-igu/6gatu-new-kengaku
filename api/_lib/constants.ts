@@ -1,4 +1,4 @@
-import type { DocumentDefinition, DocumentItemState } from '../../shared/types';
+import type { DocumentDefinition, DocumentItemState } from './types';
 
 export const CURRENT_STAFF_ID = '7b2c1f0a-3e4d-4c5b-9a8f-1e2d3c4b5a60';
 export const VIEWER_STAFF_ID = '91de4c3b-2a10-4f9e-8c7d-6b5a40392817';

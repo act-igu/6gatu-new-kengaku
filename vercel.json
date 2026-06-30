@@ -1,11 +1,5 @@
 {
   "framework": "vite",
   "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "functions": {
-    "api/[...path].ts": {
-      "maxDuration": 10,
-      "includeFiles": "shared/**"
-    }
-  }
+  "outputDirectory": "dist"
 }
