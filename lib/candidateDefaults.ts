@@ -1,6 +1,6 @@
-import type { Candidate } from '../src/types';
-import { createDefaultAcceptance } from '../src/types';
-import { createDefaultDocuments } from '../src/data/mockData';
+import type { Candidate } from '../shared/types';
+import { createDefaultAcceptance } from '../shared/types';
+import { createDefaultDocuments } from './constants';
 
 export function createEmptyCandidate(ownerStaffId: string): Candidate {
   const now = new Date().toISOString();

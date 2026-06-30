@@ -206,9 +206,58 @@ https://あなたのURL.vercel.app/api/health
 
 `{"ok":true,"message":"データベース接続 OK"}` と表示されれば DB 接続成功です。
 
+> **500 エラー（FUNCTION_INVOCATION_FAILED）が出る場合**は、下記「Vercel で API が 500 エラー」を参照してください。
+
 ---
 
 ## よくあるトラブル
+
+### Vercel で API が 500 エラー（FUNCTION_INVOCATION_FAILED）
+
+`/api/health` を開くと `This Serverless Function has crashed` と表示される場合、次を順番に確認してください。
+
+#### 1. 環境変数 `DATABASE_URL` の設定
+
+1. Vercel ダッシュボード → 対象プロジェクト → **Settings** → **Environment Variables**
+2. `DATABASE_URL` が **Production** に設定されているか確認
+3. 値は Neon の **Connection string**（`postgresql://...` で始まる文字列）
+
+> Neon では **Pooled connection**（ホスト名に `-pooler` が付く方）を使うと Serverless 環境で安定しやすいです。
+
+#### 2. 環境変数変更後は再デプロイが必要
+
+環境変数を追加・変更したあと、**Deployments** タブから **Redeploy** を実行してください。  
+設定だけ変えても、すでにデプロイ済みの関数には反映されません。
+
+#### 3. データベースの初期化
+
+本番 Neon に対して、手元の PC から：
+
+```bash
+npm run db:setup
+```
+
+（`.env.local` の `DATABASE_URL` が本番 Neon を指していること）
+
+#### 4. Vercel のログを確認
+
+1. Vercel ダッシュボード → **Deployments** → 最新のデプロイ
+2. **Functions** タブ → `api/health` の **Logs** を開く
+3. `DATABASE_URL が設定されていません` など具体的なエラーが表示されます
+
+#### 5. 最新コードを再デプロイ
+
+コード修正後は GitHub に push すると Vercel が自動再デプロイします。
+
+```bash
+git add .
+git commit -m "Fix Vercel API deployment"
+git push
+```
+
+---
+
+## よくあるトラブル（その他）
 
 ### 「接続エラー」と表示される
 

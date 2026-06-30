@@ -1,4 +1,4 @@
-import type { Candidate, StatusCode } from '../src/types';
+import type { Candidate, StatusCode } from '../shared/types';
 import { createEmptyCandidate } from './candidateDefaults';
 import { checkDbConnection } from './db';
 import {
@@ -10,7 +10,7 @@ import {
   updateCandidate,
   updateCandidateStatus,
 } from './repository';
-import { CURRENT_STAFF_ID } from '../src/data/mockData';
+import { CURRENT_STAFF_ID } from './constants';
 
 export type ApiSuccess = { ok: true; status: number; data: unknown };
 export type ApiFailure = { ok: false; status: number; error: string };
