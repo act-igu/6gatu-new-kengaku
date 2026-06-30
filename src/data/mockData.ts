@@ -13,7 +13,7 @@ import {
   VIEWER_STAFF_ID,
   createDefaultDocuments,
   documentDefinitions,
-} from '../../lib/constants';
+} from '../../api/_lib/constants';
 
 export { CURRENT_STAFF_ID, VIEWER_STAFF_ID, documentDefinitions, createDefaultDocuments };
 

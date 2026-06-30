@@ -12,7 +12,7 @@ import { config } from 'dotenv';
 import { neonConfig, Pool } from '@neondatabase/serverless';
 import ws from 'ws';
 import { mockCandidates, staffList } from '../src/data/mockData';
-import { seedCandidates, seedStaff } from '../lib/repository';
+import { seedCandidates, seedStaff } from '../api/_lib/repository';
 
 config({ path: '.env.local' });
 config({ path: '.env' });

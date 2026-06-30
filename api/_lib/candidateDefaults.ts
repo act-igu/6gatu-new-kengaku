@@ -1,5 +1,5 @@
-import type { Candidate } from '../shared/types';
-import { createDefaultAcceptance } from '../shared/types';
+import type { Candidate } from '../../shared/types';
+import { createDefaultAcceptance } from '../../shared/types';
 import { createDefaultDocuments } from './constants';
 
 export function createEmptyCandidate(ownerStaffId: string): Candidate {

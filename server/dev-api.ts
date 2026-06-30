@@ -5,7 +5,7 @@
  */
 import { createServer, type IncomingMessage } from 'node:http';
 import { config } from 'dotenv';
-import { handleApiRequest, type ApiResult } from '../lib/apiRoutes';
+import { handleApiRequest, type ApiResult } from '../api/_lib/apiRoutes';
 
 config({ path: '.env.local' });
 config({ path: '.env' });

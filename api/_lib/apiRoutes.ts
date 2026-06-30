@@ -1,4 +1,4 @@
-import type { Candidate, StatusCode } from '../shared/types';
+import type { Candidate, StatusCode } from '../../shared/types';
 import { createEmptyCandidate } from './candidateDefaults';
 import { checkDbConnection } from './db';
 import {

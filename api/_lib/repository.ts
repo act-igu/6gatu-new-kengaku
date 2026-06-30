@@ -1,4 +1,4 @@
-import type { Candidate, MemoEntry, Staff, StatusCode } from '../shared/types';
+import type { Candidate, MemoEntry, Staff, StatusCode } from '../../shared/types';
 import { getSql } from './db';
 
 interface CandidateRow {
