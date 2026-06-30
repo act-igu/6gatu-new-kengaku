@@ -1,5 +1,7 @@
 export type Role = 'editor' | 'viewer';
 
+export type Gender = 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN';
+
 export type StatusCode =
   | 'NEW'
   | 'TOUR_SCHEDULING'
@@ -15,7 +17,7 @@ export type StatusCode =
   | 'DUP'
   | 'CLOSED_OTHER';
 
-export type FollowUpFilter = 'hold' | 'today' | 'overdue' | 'unset';
+export type FollowUpFilter = 'hold' | 'today' | 'overdue' | 'unset' | 'mine';
 
 export interface StatusDefinition {
   code: StatusCode;
@@ -30,6 +32,11 @@ export interface SiteTag {
 }
 
 export interface SupportCategory {
+  code: string;
+  label: string;
+}
+
+export interface HoldReason {
   code: string;
   label: string;
 }
@@ -55,6 +62,11 @@ export interface FollowUpInfo {
   owner_staff_id: string | null;
 }
 
+export interface ScheduleInfo {
+  tour_datetime: string | null;
+  move_in_planned_date: string | null;
+}
+
 export interface MemoEntry {
   entry_id: string;
   occurred_at: string;
@@ -66,6 +78,10 @@ export interface MemoEntry {
 export interface CandidatePane3 {
   display_name: string;
   phone_primary: string;
+  phone_secondary: string;
+  contact_secondary_name: string;
+  gender: Gender;
+  date_of_birth: string | null;
   support_category: string;
   official_name: string;
   address_situation: string;
@@ -74,15 +90,16 @@ export interface CandidatePane3 {
   specialist_phone: string;
   specialist_email: string;
   referral_route: string;
-  follow_owner_staff_id: string | null;
 }
 
 export interface Candidate {
   id: string;
   status: StatusCode;
+  created_at: string;
   site_tags: string[];
   hold: HoldInfo;
   follow_up: FollowUpInfo;
+  schedule: ScheduleInfo;
   pane3: CandidatePane3;
   memos: MemoEntry[];
   updated_at: string;
@@ -125,4 +142,14 @@ export function getStatusLabel(code: StatusCode): string {
 
 export function getRecommendedNext(code: StatusCode): StatusCode | null {
   return RECOMMENDED_NEXT[code] ?? null;
+}
+
+export function isArchivedStatus(code: StatusCode): boolean {
+  return ARCHIVED_STATUSES.some((s) => s.code === code);
+}
+
+export function getPreviousActiveStatus(code: StatusCode): StatusCode | null {
+  const idx = ACTIVE_STATUSES.findIndex((s) => s.code === code);
+  if (idx <= 0) return null;
+  return ACTIVE_STATUSES[idx - 1].code;
 }

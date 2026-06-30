@@ -1,65 +1,192 @@
-import { useState } from 'react';
-import type { Candidate } from '../types';
-import { getRecommendedNext, getStatusLabel } from '../types';
-import { formatDateTime, resolveStaffName } from '../data/mockData';
+import { useEffect, useState } from 'react';
+import type { Candidate, StatusCode } from '../types';
+import {
+  ARCHIVED_STATUSES,
+  getPreviousActiveStatus,
+  getRecommendedNext,
+  getStatusLabel,
+  isArchivedStatus,
+} from '../types';
+import {
+  formatDateTime,
+  holdReasons,
+  resolveHoldReasonLabel,
+  resolveStaffName,
+  staffList,
+} from '../data/mockData';
 
 interface OperationPaneProps {
   candidate: Candidate | null;
+  onSave: (candidate: Candidate) => void;
+  onStatusChange: (id: string, status: StatusCode) => void;
+  onAppendMemo: (id: string, body: string) => void;
 }
 
-export function OperationPane({ candidate }: OperationPaneProps) {
+export function OperationPane({
+  candidate,
+  onSave,
+  onStatusChange,
+  onAppendMemo,
+}: OperationPaneProps) {
   const [memoDraft, setMemoDraft] = useState('');
   const [showOtherStatuses, setShowOtherStatuses] = useState(false);
+  const [showArchiveMenu, setShowArchiveMenu] = useState(false);
+  const [followDraft, setFollowDraft] = useState<Candidate['follow_up'] | null>(
+    null,
+  );
+  const [holdDraft, setHoldDraft] = useState<Candidate['hold'] | null>(null);
+  const [followDirty, setFollowDirty] = useState(false);
 
-  if (!candidate) {
+  useEffect(() => {
+    if (candidate) {
+      setFollowDraft({ ...candidate.follow_up });
+      setHoldDraft({ ...candidate.hold });
+      setFollowDirty(false);
+      setMemoDraft('');
+    } else {
+      setFollowDraft(null);
+      setHoldDraft(null);
+      setFollowDirty(false);
+    }
+  }, [candidate?.id, candidate?.updated_at]);
+
+  if (!candidate || !followDraft || !holdDraft) {
     return (
       <section className="pane pane-operation">
-        <h2 className="pane-title">第4ペイン — 運用</h2>
+        <h2 className="pane-title">運用</h2>
         <p className="empty-message">候補者を選択してください</p>
       </section>
     );
   }
 
   const recommended = getRecommendedNext(candidate.status);
+  const previous = getPreviousActiveStatus(candidate.status);
+  const isArchived = isArchivedStatus(candidate.status);
+
+  const handleSaveFollowHold = () => {
+    onSave({
+      ...candidate,
+      follow_up: followDraft,
+      hold: holdDraft,
+    });
+    setFollowDirty(false);
+  };
+
+  const toggleHold = () => {
+    setHoldDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            active: !prev.active,
+            reason_code: !prev.active ? prev.reason_code ?? 'WAIT_FAMILY' : prev.reason_code,
+          }
+        : prev,
+    );
+    setFollowDirty(true);
+  };
 
   return (
     <section className="pane pane-operation">
-      <h2 className="pane-title">第4ペイン — 運用</h2>
+      <h2 className="pane-title">運用</h2>
 
       <div className="op-section">
         <h3 className="section-title">ステータス操作</h3>
         <p className="current-status">
           現在のステータス: <strong>{getStatusLabel(candidate.status)}</strong>
         </p>
-        {recommended && (
-          <button type="button" className="btn-primary">
+        {!isArchived && recommended && (
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => onStatusChange(candidate.id, recommended)}
+          >
             推奨: {getStatusLabel(recommended)}
           </button>
         )}
-        <div className="other-status">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => setShowOtherStatuses(!showOtherStatuses)}
-          >
-            他へ進む ▾
-          </button>
-          {showOtherStatuses && (
-            <div className="dropdown-menu">
-              <button type="button">前のステータスへ戻す</button>
-              <button type="button">終了（アーカイブ）</button>
-            </div>
-          )}
-        </div>
+        {!isArchived && (
+          <div className="other-status">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                setShowOtherStatuses(!showOtherStatuses);
+                setShowArchiveMenu(false);
+              }}
+            >
+              他へ進む ▾
+            </button>
+            {showOtherStatuses && (
+              <div className="dropdown-menu">
+                {previous && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onStatusChange(candidate.id, previous);
+                      setShowOtherStatuses(false);
+                    }}
+                  >
+                    前のステータスへ戻す（{getStatusLabel(previous)}）
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowArchiveMenu(!showArchiveMenu);
+                  }}
+                >
+                  終了（アーカイブ）▸
+                </button>
+                {showArchiveMenu && (
+                  <div className="dropdown-submenu">
+                    {ARCHIVED_STATUSES.map((s) => (
+                      <button
+                        key={s.code}
+                        type="button"
+                        onClick={() => {
+                          onStatusChange(candidate.id, s.code);
+                          setShowOtherStatuses(false);
+                          setShowArchiveMenu(false);
+                        }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {isArchived && (
+          <p className="archived-notice">この候補者は終了済みです</p>
+        )}
       </div>
 
       <div className="op-section">
-        <h3 className="section-title">次回対応</h3>
+        <div className="op-section-header">
+          <h3 className="section-title">次回対応</h3>
+          <button
+            type="button"
+            className="btn-save-small"
+            disabled={!followDirty}
+            onClick={handleSaveFollowHold}
+          >
+            保存
+          </button>
+        </div>
         <div className="field-row compact">
           <label className="field-label">次回対応日</label>
           <input
             type="date"
-            defaultValue={candidate.follow_up.next_date ?? ''}
+            value={followDraft.next_date ?? ''}
+            onChange={(e) => {
+              setFollowDraft((prev) =>
+                prev
+                  ? { ...prev, next_date: e.target.value || null }
+                  : prev,
+              );
+              setFollowDirty(true);
+            }}
           />
         </div>
         <div className="field-row compact">
@@ -67,16 +194,39 @@ export function OperationPane({ candidate }: OperationPaneProps) {
           <input
             type="text"
             placeholder="未設定"
-            defaultValue={candidate.follow_up.next_note ?? ''}
+            value={followDraft.next_note ?? ''}
+            onChange={(e) => {
+              setFollowDraft((prev) =>
+                prev ? { ...prev, next_note: e.target.value || null } : prev,
+              );
+              setFollowDirty(true);
+            }}
           />
         </div>
         <div className="field-row compact">
           <label className="field-label">フォロー担当</label>
-          <select defaultValue={candidate.follow_up.owner_staff_id ?? ''}>
+          <select
+            value={followDraft.owner_staff_id ?? ''}
+            onChange={(e) => {
+              setFollowDraft((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      owner_staff_id: e.target.value || null,
+                    }
+                  : prev,
+              );
+              setFollowDirty(true);
+            }}
+          >
             <option value="">未設定</option>
-            <option value="7b2c1f0a-3e4d-4c5b-9a8f-1e2d3c4b5a60">
-              山田（相談）
-            </option>
+            {staffList
+              .filter((s) => s.active)
+              .map((s) => (
+                <option key={s.staff_id} value={s.staff_id}>
+                  {s.display_name}
+                </option>
+              ))}
           </select>
         </div>
       </div>
@@ -85,12 +235,61 @@ export function OperationPane({ candidate }: OperationPaneProps) {
         <h3 className="section-title">保留</h3>
         <div className="hold-control">
           <span className="hold-state">
-            {candidate.hold.active ? '保留中' : '保留なし'}
+            {holdDraft.active ? '保留中' : '保留なし'}
+            {holdDraft.active && holdDraft.reason_code && (
+              <span className="hold-reason-label">
+                （{resolveHoldReasonLabel(holdDraft.reason_code)}）
+              </span>
+            )}
           </span>
-          <button type="button" className="btn-outline">
-            切り替え
+          <button type="button" className="btn-outline" onClick={toggleHold}>
+            {holdDraft.active ? '保留解除' : '保留にする'}
           </button>
         </div>
+        {holdDraft.active && (
+          <>
+            <div className="field-row compact">
+              <label className="field-label">保留理由</label>
+              <select
+                value={holdDraft.reason_code ?? ''}
+                onChange={(e) => {
+                  setHoldDraft((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          reason_code: e.target.value || null,
+                        }
+                      : prev,
+                  );
+                  setFollowDirty(true);
+                }}
+              >
+                <option value="">選択してください</option>
+                {holdReasons.map((r) => (
+                  <option key={r.code} value={r.code}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field-row compact">
+              <label className="field-label">保留メモ</label>
+              <input
+                type="text"
+                placeholder="補足メモ"
+                value={holdDraft.note ?? ''}
+                onChange={(e) => {
+                  setHoldDraft((prev) =>
+                    prev
+                      ? { ...prev, note: e.target.value || null }
+                      : prev,
+                  );
+                  setFollowDirty(true);
+                }}
+              />
+            </div>
+          </>
+        )}
       </div>
 
       <div className="op-section memo-section">
@@ -103,6 +302,7 @@ export function OperationPane({ candidate }: OperationPaneProps) {
             <div key={memo.entry_id} className="memo-entry">
               <span className="memo-meta">
                 {formatDateTime(memo.occurred_at)}・
+                {memo.contact_date && `接触日 ${memo.contact_date}・`}
                 {resolveStaffName(memo.author_staff_id)}
               </span>
               <p className="memo-body">{memo.body}</p>
@@ -116,15 +316,21 @@ export function OperationPane({ candidate }: OperationPaneProps) {
           value={memoDraft}
           onChange={(e) => setMemoDraft(e.target.value)}
         />
-        <button type="button" className="btn-append" disabled={!memoDraft.trim()}>
+        <button
+          type="button"
+          className="btn-append"
+          disabled={!memoDraft.trim()}
+          onClick={() => {
+            onAppendMemo(candidate.id, memoDraft.trim());
+            setMemoDraft('');
+          }}
+        >
           追記する
         </button>
       </div>
 
       <footer className="op-footer">
-        <p>
-          最終更新: {formatDateTime(candidate.updated_at)}（自動）
-        </p>
+        <p>最終更新: {formatDateTime(candidate.updated_at)}（自動）</p>
         <p className="audit-note">
           ステータス変更・メモ追記・次回日更新は監査ログに記録されます
         </p>
