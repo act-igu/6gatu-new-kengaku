@@ -1,11 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
-import type { Candidate, StatusCode } from './types';
-import {
-  CURRENT_STAFF_ID,
-  createNewCandidate,
-  mockCandidates,
-  staffList,
-} from './data/mockData';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { Candidate, Staff, StatusCode } from './types';
+import { CURRENT_STAFF_ID } from './data/mockData';
 import { StatusPane } from './components/StatusPane';
 import { CandidateListPane } from './components/CandidateListPane';
 import { DetailPane } from './components/DetailPane';
@@ -13,18 +8,54 @@ import { OperationPane } from './components/OperationPane';
 import { RoleBadge } from './components/SharedAlerts';
 import { getStatusLabel, isArchivedStatus } from './types';
 import { findDuplicateCandidates } from './utils/duplicates';
+import * as api from './api/client';
 
 export default function App() {
-  const [candidates, setCandidates] = useState<Candidate[]>(mockCandidates);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [staffList, setStaffList] = useState<Staff[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<StatusCode>('NEW');
-  const [selectedId, setSelectedId] = useState<string | null>('cand-001');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [globalSearch, setGlobalSearch] = useState(false);
   const [currentStaffId, setCurrentStaffId] = useState(CURRENT_STAFF_ID);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [staff, list] = await Promise.all([
+        api.fetchStaff(),
+        api.fetchCandidates(),
+      ]);
+      setStaffList(staff);
+      setCandidates(list);
+      if (list.length > 0) {
+        setSelectedId((current) => {
+          if (current && list.some((c) => c.id === current)) return current;
+          return (list.find((c) => c.status === 'NEW') ?? list[0]).id;
+        });
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'データの読み込みに失敗しました',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const currentStaff = useMemo(
     () => staffList.find((s) => s.staff_id === currentStaffId) ?? staffList[0],
-    [currentStaffId],
+    [staffList, currentStaffId],
   );
 
   const selectedCandidate = useMemo(
@@ -37,80 +68,97 @@ export default function App() {
     window.setTimeout(() => setSaveNotice(null), 2500);
   }, []);
 
-  const updateCandidate = useCallback(
-    (id: string, updater: (c: Candidate) => Candidate) => {
-      setCandidates((prev) =>
-        prev.map((c) => (c.id === id ? updater(c) : c)),
-      );
-    },
-    [],
-  );
+  const replaceCandidate = useCallback((updated: Candidate) => {
+    setCandidates((prev) =>
+      prev.map((c) => (c.id === updated.id ? updated : c)),
+    );
+  }, []);
 
   const handleSaveCandidate = useCallback(
-    (updated: Candidate) => {
-      const duplicates = findDuplicateCandidates(updated, candidates).filter(
-        (d) => d.id !== updated.id,
-      );
-      updateCandidate(updated.id, () => ({
-        ...updated,
-        updated_at: new Date().toISOString(),
-      }));
-      if (duplicates.length > 0) {
-        showSaveNotice(
-          `保存しました（同一電話の候補者が ${duplicates.length} 件あります）`,
+    async (updated: Candidate) => {
+      setSaving(true);
+      try {
+        const saved = await api.updateCandidate(updated);
+        replaceCandidate(saved);
+        const duplicates = findDuplicateCandidates(saved, candidates).filter(
+          (d) => d.id !== saved.id,
         );
-      } else {
-        showSaveNotice('保存しました');
+        if (duplicates.length > 0) {
+          showSaveNotice(
+            `保存しました（同一電話の候補者が ${duplicates.length} 件あります）`,
+          );
+        } else {
+          showSaveNotice('保存しました');
+        }
+      } catch (err) {
+        showSaveNotice(
+          err instanceof Error ? err.message : '保存に失敗しました',
+        );
+      } finally {
+        setSaving(false);
       }
     },
-    [candidates, updateCandidate, showSaveNotice],
+    [candidates, replaceCandidate, showSaveNotice],
   );
 
   const handleStatusChange = useCallback(
-    (id: string, newStatus: StatusCode) => {
-      updateCandidate(id, (c) => ({
-        ...c,
-        status: newStatus,
-        updated_at: new Date().toISOString(),
-      }));
-      if (!globalSearch) {
-        setSelectedStatus(newStatus);
+    async (id: string, newStatus: StatusCode) => {
+      setSaving(true);
+      try {
+        const updated = await api.updateCandidateStatus(id, newStatus);
+        replaceCandidate(updated);
+        if (!globalSearch) {
+          setSelectedStatus(newStatus);
+        }
+        showSaveNotice(
+          `ステータスを「${getStatusLabel(newStatus)}」に変更しました`,
+        );
+      } catch (err) {
+        showSaveNotice(
+          err instanceof Error ? err.message : 'ステータス変更に失敗しました',
+        );
+      } finally {
+        setSaving(false);
       }
-      showSaveNotice(`ステータスを「${getStatusLabel(newStatus)}」に変更しました`);
     },
-    [updateCandidate, globalSearch, showSaveNotice],
+    [globalSearch, replaceCandidate, showSaveNotice],
   );
 
   const handleAppendMemo = useCallback(
-    (id: string, body: string) => {
-      const now = new Date().toISOString();
-      updateCandidate(id, (c) => ({
-        ...c,
-        memos: [
-          {
-            entry_id: `memo-${crypto.randomUUID().slice(0, 8)}`,
-            occurred_at: now,
-            contact_date: now.slice(0, 10),
-            author_staff_id: currentStaffId,
-            body,
-          },
-          ...c.memos,
-        ],
-        updated_at: now,
-      }));
-      showSaveNotice('面談記録を追記しました');
+    async (id: string, body: string) => {
+      setSaving(true);
+      try {
+        const updated = await api.appendMemo(id, body, currentStaffId);
+        replaceCandidate(updated);
+        showSaveNotice('面談記録を追記しました');
+      } catch (err) {
+        showSaveNotice(
+          err instanceof Error ? err.message : '追記に失敗しました',
+        );
+      } finally {
+        setSaving(false);
+      }
     },
-    [updateCandidate, currentStaffId, showSaveNotice],
+    [currentStaffId, replaceCandidate, showSaveNotice],
   );
 
-  const handleNewCandidate = useCallback(() => {
-    const created = createNewCandidate();
-    setCandidates((prev) => [created, ...prev]);
-    setSelectedStatus('NEW');
-    setGlobalSearch(false);
-    setSelectedId(created.id);
-    showSaveNotice('新規候補者を登録しました');
-  }, [showSaveNotice]);
+  const handleNewCandidate = useCallback(async () => {
+    setSaving(true);
+    try {
+      const created = await api.createCandidate(currentStaffId);
+      setCandidates((prev) => [created, ...prev]);
+      setSelectedStatus('NEW');
+      setGlobalSearch(false);
+      setSelectedId(created.id);
+      showSaveNotice('新規候補者を登録しました');
+    } catch (err) {
+      showSaveNotice(
+        err instanceof Error ? err.message : '登録に失敗しました',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }, [currentStaffId, showSaveNotice]);
 
   const handleSelectStatus = useCallback(
     (code: StatusCode) => {
@@ -141,7 +189,31 @@ export default function App() {
       ? getStatusLabel(selectedCandidate.status)
       : getStatusLabel(selectedStatus);
 
-  const isViewer = currentStaff.role === 'viewer';
+  const isViewer = currentStaff?.role === 'viewer';
+
+  if (loading) {
+    return (
+      <div className="app app-loading">
+        <p>データを読み込んでいます...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="app app-error">
+        <h1>接続エラー</h1>
+        <p>{error}</p>
+        <p className="error-hint">
+          DATABASE_URL が設定されているか、<code>npm run db:setup</code>{' '}
+          を実行したか確認してください。
+        </p>
+        <button type="button" className="btn-header" onClick={loadData}>
+          再試行
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
@@ -172,7 +244,7 @@ export default function App() {
                   </option>
                 ))}
             </select>
-            <RoleBadge staff={currentStaff} />
+            {currentStaff && <RoleBadge staff={currentStaff} />}
           </div>
           <label className="global-search-toggle">
             <input
@@ -186,11 +258,13 @@ export default function App() {
             <button
               type="button"
               className="btn-header"
+              disabled={saving}
               onClick={handleNewCandidate}
             >
               ＋ 新規登録
             </button>
           )}
+          {saving && <span className="saving-indicator">保存中...</span>}
           {saveNotice && (
             <span className="save-notice" role="status">
               {saveNotice}
@@ -216,14 +290,14 @@ export default function App() {
         <DetailPane
           candidate={selectedCandidate}
           allCandidates={candidates}
-          role={currentStaff.role}
+          role={currentStaff?.role ?? 'viewer'}
           onSave={handleSaveCandidate}
           onSelectDuplicate={handleSelectCandidate}
         />
         <OperationPane
           candidate={selectedCandidate}
           allCandidates={candidates}
-          role={currentStaff.role}
+          role={currentStaff?.role ?? 'viewer'}
           onSave={handleSaveCandidate}
           onStatusChange={handleStatusChange}
           onAppendMemo={handleAppendMemo}
