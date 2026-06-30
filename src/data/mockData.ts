@@ -1,6 +1,17 @@
-import type { Candidate, SiteTag, Staff, SupportCategory, HoldReason } from '../types';
+import type {
+  AcceptanceAssessment,
+  Candidate,
+  DocumentItemState,
+  SiteTag,
+  Staff,
+  SupportCategory,
+  HoldReason,
+  DocumentDefinition,
+} from '../types';
+import { createDefaultAcceptance } from '../types';
 
 export const CURRENT_STAFF_ID = '7b2c1f0a-3e4d-4c5b-9a8f-1e2d3c4b5a60';
+export const VIEWER_STAFF_ID = '91de4c3b-2a10-4f9e-8c7d-6b5a40392817';
 
 export const siteTags: SiteTag[] = [
   { code: 'AREA_EAST', label: 'エリア東' },
@@ -28,6 +39,42 @@ export const holdReasons: HoldReason[] = [
   { code: 'OTHER', label: 'その他' },
 ];
 
+export const documentDefinitions: DocumentDefinition[] = [
+  { code: 'SERVICE_PLAN', label: 'サービス等利用計画' },
+  { code: 'RECIPIENT_CERT', label: '受給者証' },
+  { code: 'BURDEN_LIMIT', label: '利用者負担上限額管理結果表' },
+  { code: 'ASSESSMENT', label: 'アセスメントシート' },
+  { code: 'CONTRACT', label: '契約書類' },
+  { code: 'BANK_ACCOUNT', label: '口座情報' },
+  { code: 'PERSONAL_ID', label: '本人確認書類' },
+  { code: 'MONITORING_CONSENT', label: 'モニタリング同意書' },
+];
+
+export const disabilityTypes: { code: AcceptanceAssessment['disability_type']; label: string }[] = [
+  { code: 'INTELLECTUAL', label: '知的障害' },
+  { code: 'MENTAL', label: '精神障害' },
+  { code: 'PHYSICAL', label: '身体障害' },
+  { code: 'DEVELOPMENTAL', label: '発達障害' },
+  { code: 'OTHER', label: 'その他' },
+  { code: 'UNKNOWN', label: '未確認' },
+];
+
+export const certificateStatuses: { code: AcceptanceAssessment['certificate_status']; label: string }[] = [
+  { code: 'UNKNOWN', label: '未確認' },
+  { code: 'NONE', label: '未取得' },
+  { code: 'PENDING', label: '申請中' },
+  { code: 'OBTAINED', label: '取得済' },
+];
+
+export const supportNeedLabels: { key: keyof AcceptanceAssessment['support_needs']; label: string }[] = [
+  { key: 'excretion', label: '排泄' },
+  { key: 'bathing', label: '入浴' },
+  { key: 'meals', label: '食事' },
+  { key: 'medication', label: '服薬' },
+  { key: 'nighttime', label: '夜間' },
+  { key: 'mobility', label: '移動' },
+];
+
 export const staffList: Staff[] = [
   {
     staff_id: CURRENT_STAFF_ID,
@@ -38,7 +85,7 @@ export const staffList: Staff[] = [
     default_site_tags: ['AREA_EAST', 'BLDG_A'],
   },
   {
-    staff_id: '91de4c3b-2a10-4f9e-8c7d-6b5a40392817',
+    staff_id: VIEWER_STAFF_ID,
     login_id: 'sato@example.org',
     display_name: '佐藤（事務）',
     role: 'viewer',
@@ -46,6 +93,14 @@ export const staffList: Staff[] = [
     default_site_tags: [],
   },
 ];
+
+export function createDefaultDocuments(): DocumentItemState[] {
+  return documentDefinitions.map((d) => ({
+    code: d.code,
+    checked: false,
+    checked_at: null,
+  }));
+}
 
 export const mockCandidates: Candidate[] = [
   {
@@ -63,6 +118,13 @@ export const mockCandidates: Candidate[] = [
       tour_datetime: null,
       move_in_planned_date: null,
     },
+    acceptance: {
+      ...createDefaultAcceptance(),
+      disability_type: 'DEVELOPMENTAL',
+      primary_disability: '自閉スペクトラム',
+      acceptance_notes: '初回ヒアリング待ち',
+    },
+    documents: createDefaultDocuments(),
     pane3: {
       display_name: '鈴木（仮）',
       phone_primary: '090-1234-5678',
@@ -105,6 +167,24 @@ export const mockCandidates: Candidate[] = [
       tour_datetime: null,
       move_in_planned_date: '2026-09-01',
     },
+    acceptance: {
+      disability_type: 'INTELLECTUAL',
+      primary_disability: '知的障害',
+      support_needs: {
+        excretion: true,
+        bathing: true,
+        meals: false,
+        medication: true,
+        nighttime: false,
+        mobility: false,
+      },
+      medical_care_required: false,
+      medical_care_note: '',
+      user_burden_limit: '9300',
+      certificate_status: 'OBTAINED',
+      acceptance_notes: '受け入れ可能。A棟2階を検討。',
+    },
+    documents: createDefaultDocuments(),
     pane3: {
       display_name: '田中（仮）',
       phone_primary: '080-9876-5432',
@@ -139,6 +219,24 @@ export const mockCandidates: Candidate[] = [
       tour_datetime: '2026-07-05T14:00:00',
       move_in_planned_date: null,
     },
+    acceptance: {
+      disability_type: 'MENTAL',
+      primary_disability: '統合失調症',
+      support_needs: {
+        excretion: false,
+        bathing: false,
+        meals: true,
+        medication: true,
+        nighttime: true,
+        mobility: false,
+      },
+      medical_care_required: false,
+      medical_care_note: '',
+      user_burden_limit: '4600',
+      certificate_status: 'OBTAINED',
+      acceptance_notes: '夜間見守り要。見学時に居室確認。',
+    },
+    documents: createDefaultDocuments(),
     pane3: {
       display_name: '佐々木（仮）',
       phone_primary: '070-1111-2222',
@@ -166,6 +264,70 @@ export const mockCandidates: Candidate[] = [
     ],
     updated_at: '2026-06-29T09:00:00',
   },
+  {
+    id: 'cand-004',
+    status: 'CONTRACTING',
+    created_at: '2026-06-01T10:00:00',
+    site_tags: ['AREA_EAST', 'BLDG_A'],
+    hold: { active: false, reason_code: null, note: null },
+    follow_up: {
+      next_date: '2026-07-10',
+      next_note: '契約書類の回収',
+      owner_staff_id: CURRENT_STAFF_ID,
+    },
+    schedule: {
+      tour_datetime: '2026-06-10T14:00:00',
+      move_in_planned_date: '2026-08-01',
+    },
+    acceptance: {
+      disability_type: 'DEVELOPMENTAL',
+      primary_disability: '自閉スペクトラム',
+      support_needs: {
+        excretion: false,
+        bathing: false,
+        meals: false,
+        medication: false,
+        nighttime: false,
+        mobility: false,
+      },
+      medical_care_required: false,
+      medical_care_note: '',
+      user_burden_limit: '0',
+      certificate_status: 'OBTAINED',
+      acceptance_notes: '契約手続中。書類回収を進める。',
+    },
+    documents: documentDefinitions.map((d, i) => ({
+      code: d.code,
+      checked: i < 4,
+      checked_at: i < 4 ? '2026-06-25T10:00:00' : null,
+    })),
+    pane3: {
+      display_name: '鈴木 太郎（仮）',
+      phone_primary: '090-1234-5678',
+      phone_secondary: '03-5555-6666',
+      contact_secondary_name: '鈴木 美咲（姉）',
+      gender: 'MALE',
+      date_of_birth: '2000-07-08',
+      support_category: 'CAT4',
+      official_name: '鈴木 太郎',
+      address_situation: 'グループホーム入居予定',
+      specialist_name: '高橋',
+      specialist_office: '○○相談支援',
+      specialist_phone: '03-0000-1111',
+      specialist_email: 'takahashi@example.org',
+      referral_route: '計画相談支援からの紹介（cand-001と同一電話）',
+    },
+    memos: [
+      {
+        entry_id: 'memo-003',
+        occurred_at: '2026-06-25T11:00:00',
+        contact_date: '2026-06-25',
+        author_staff_id: CURRENT_STAFF_ID,
+        body: '契約書類4点回収済。残り口座・本人確認待ち。',
+      },
+    ],
+    updated_at: '2026-06-25T11:00:00',
+  },
 ];
 
 export function createNewCandidate(): Candidate {
@@ -185,6 +347,8 @@ export function createNewCandidate(): Candidate {
       tour_datetime: null,
       move_in_planned_date: null,
     },
+    acceptance: createDefaultAcceptance(),
+    documents: createDefaultDocuments(),
     pane3: {
       display_name: '新規（仮）',
       phone_primary: '',
@@ -221,6 +385,10 @@ export function resolveHoldReasonLabel(code: string | null): string {
   return holdReasons.find((r) => r.code === code)?.label ?? code;
 }
 
+export function resolveDocumentLabel(code: string): string {
+  return documentDefinitions.find((d) => d.code === code)?.label ?? code;
+}
+
 export function resolveStaffName(staffId: string | null): string {
   if (!staffId) return '未設定';
   return staffList.find((s) => s.staff_id === staffId)?.display_name ?? '未設定';
@@ -234,6 +402,14 @@ export function resolveGenderLabel(gender: string): string {
     UNKNOWN: '未確認',
   };
   return labels[gender] ?? gender;
+}
+
+export function resolveDisabilityTypeLabel(code: string): string {
+  return disabilityTypes.find((d) => d.code === code)?.label ?? code;
+}
+
+export function resolveCertificateStatusLabel(code: string): string {
+  return certificateStatuses.find((c) => c.code === code)?.label ?? code;
 }
 
 export function formatDate(iso: string): string {
@@ -298,4 +474,8 @@ export function matchesSearchQuery(candidate: Candidate, query: string): boolean
     p.specialist_office.toLowerCase().includes(q) ||
     p.official_name.toLowerCase().includes(q)
   );
+}
+
+export function countCheckedDocuments(documents: DocumentItemState[]): number {
+  return documents.filter((d) => d.checked).length;
 }

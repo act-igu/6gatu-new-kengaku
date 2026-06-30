@@ -13,6 +13,7 @@ import {
   resolveSupportCategoryLabel,
   siteTags,
 } from '../data/mockData';
+import { hasActiveDuplicateWarning } from '../utils/duplicates';
 
 interface CandidateListPaneProps {
   selectedStatus: StatusCode;
@@ -149,15 +150,19 @@ export function CandidateListPane({
         {filtered.map((candidate) => {
           const overdue = isOverdue(candidate.follow_up.next_date);
           const holdLabel = resolveHoldReasonLabel(candidate.hold.reason_code);
+          const isDuplicate = hasActiveDuplicateWarning(candidate, candidates);
           return (
             <li key={candidate.id}>
               <button
                 type="button"
-                className={`candidate-card${selectedId === candidate.id ? ' selected' : ''}`}
+                className={`candidate-card${selectedId === candidate.id ? ' selected' : ''}${isDuplicate ? ' has-duplicate' : ''}`}
                 onClick={() => onSelectCandidate(candidate.id)}
               >
                 <div className="card-top">
                   <span className="card-name">{candidate.pane3.display_name}</span>
+                  {isDuplicate && (
+                    <span className="badge-duplicate">重複?</span>
+                  )}
                   {globalSearch && (
                     <span className="badge-status">
                       {getStatusLabel(candidate.status)}

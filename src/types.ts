@@ -2,6 +2,16 @@ export type Role = 'editor' | 'viewer';
 
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER' | 'UNKNOWN';
 
+export type DisabilityType =
+  | 'INTELLECTUAL'
+  | 'MENTAL'
+  | 'PHYSICAL'
+  | 'DEVELOPMENTAL'
+  | 'OTHER'
+  | 'UNKNOWN';
+
+export type CertificateStatus = 'NONE' | 'PENDING' | 'OBTAINED' | 'UNKNOWN';
+
 export type StatusCode =
   | 'NEW'
   | 'TOUR_SCHEDULING'
@@ -41,6 +51,11 @@ export interface HoldReason {
   label: string;
 }
 
+export interface DocumentDefinition {
+  code: string;
+  label: string;
+}
+
 export interface Staff {
   staff_id: string;
   login_id: string;
@@ -65,6 +80,32 @@ export interface FollowUpInfo {
 export interface ScheduleInfo {
   tour_datetime: string | null;
   move_in_planned_date: string | null;
+}
+
+export interface SupportNeeds {
+  excretion: boolean;
+  bathing: boolean;
+  meals: boolean;
+  medication: boolean;
+  nighttime: boolean;
+  mobility: boolean;
+}
+
+export interface AcceptanceAssessment {
+  disability_type: DisabilityType;
+  primary_disability: string;
+  support_needs: SupportNeeds;
+  medical_care_required: boolean;
+  medical_care_note: string;
+  user_burden_limit: string | null;
+  certificate_status: CertificateStatus;
+  acceptance_notes: string;
+}
+
+export interface DocumentItemState {
+  code: string;
+  checked: boolean;
+  checked_at: string | null;
 }
 
 export interface MemoEntry {
@@ -100,6 +141,8 @@ export interface Candidate {
   hold: HoldInfo;
   follow_up: FollowUpInfo;
   schedule: ScheduleInfo;
+  acceptance: AcceptanceAssessment;
+  documents: DocumentItemState[];
   pane3: CandidatePane3;
   memos: MemoEntry[];
   updated_at: string;
@@ -135,6 +178,11 @@ export const RECOMMENDED_NEXT: Partial<Record<StatusCode, StatusCode>> = {
   PRE_MOVE_IN: 'DONE',
 };
 
+export const DOCUMENT_CHECKLIST_STATUSES: StatusCode[] = [
+  'CONTRACTING',
+  'PRE_MOVE_IN',
+];
+
 export function getStatusLabel(code: StatusCode): string {
   const all = [...ACTIVE_STATUSES, ...ARCHIVED_STATUSES];
   return all.find((s) => s.code === code)?.label ?? code;
@@ -152,4 +200,28 @@ export function getPreviousActiveStatus(code: StatusCode): StatusCode | null {
   const idx = ACTIVE_STATUSES.findIndex((s) => s.code === code);
   if (idx <= 0) return null;
   return ACTIVE_STATUSES[idx - 1].code;
+}
+
+export function createDefaultSupportNeeds(): SupportNeeds {
+  return {
+    excretion: false,
+    bathing: false,
+    meals: false,
+    medication: false,
+    nighttime: false,
+    mobility: false,
+  };
+}
+
+export function createDefaultAcceptance(): AcceptanceAssessment {
+  return {
+    disability_type: 'UNKNOWN',
+    primary_disability: '',
+    support_needs: createDefaultSupportNeeds(),
+    medical_care_required: false,
+    medical_care_note: '',
+    user_burden_limit: null,
+    certificate_status: 'UNKNOWN',
+    acceptance_notes: '',
+  };
 }

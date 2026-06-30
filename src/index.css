@@ -102,6 +102,43 @@ body {
   animation: fade-in 0.2s ease;
 }
 
+.staff-switcher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.staff-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.staff-select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-family: var(--font);
+  background: #fff;
+}
+
+.role-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.role-badge.role-editor {
+  background: #e3eaf2;
+  color: var(--primary);
+}
+
+.role-badge.role-viewer {
+  background: #f0f0f0;
+  color: var(--text-muted);
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -431,6 +468,19 @@ body {
   border-radius: 8px;
 }
 
+.badge-duplicate {
+  font-size: 10px;
+  background: #fff3e0;
+  color: #e65100;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.candidate-card.has-duplicate {
+  border-left: 3px solid #e65100;
+}
+
 .site-filter {
   padding-top: 0;
 }
@@ -616,6 +666,100 @@ body {
   font-size: 12px;
   color: var(--text-muted);
   padding: 6px 0;
+}
+
+.viewer-notice {
+  margin: 0 16px 8px;
+  padding: 8px 10px;
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: var(--radius);
+  font-size: 11px;
+  color: #8d6e00;
+}
+
+.viewer-restricted {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.duplicate-banner {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.duplicate-banner-text {
+  margin: 4px 0 6px;
+  color: #bf360c;
+}
+
+.duplicate-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.duplicate-link {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  font-size: 12px;
+  color: var(--primary);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font);
+  text-decoration: underline;
+}
+
+.inline-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+.document-checklist {
+  list-style: none;
+}
+
+.document-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 12px;
+}
+
+.document-item:last-child {
+  border-bottom: none;
+}
+
+.document-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.document-checked-at {
+  font-size: 10px;
+  color: #2e7d32;
+  white-space: nowrap;
+}
+
+.document-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 /* ── Pane 4: Operation ── */

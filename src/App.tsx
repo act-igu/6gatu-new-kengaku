@@ -4,19 +4,28 @@ import {
   CURRENT_STAFF_ID,
   createNewCandidate,
   mockCandidates,
+  staffList,
 } from './data/mockData';
 import { StatusPane } from './components/StatusPane';
 import { CandidateListPane } from './components/CandidateListPane';
 import { DetailPane } from './components/DetailPane';
 import { OperationPane } from './components/OperationPane';
+import { RoleBadge } from './components/SharedAlerts';
 import { getStatusLabel, isArchivedStatus } from './types';
+import { findDuplicateCandidates } from './utils/duplicates';
 
 export default function App() {
   const [candidates, setCandidates] = useState<Candidate[]>(mockCandidates);
   const [selectedStatus, setSelectedStatus] = useState<StatusCode>('NEW');
   const [selectedId, setSelectedId] = useState<string | null>('cand-001');
   const [globalSearch, setGlobalSearch] = useState(false);
+  const [currentStaffId, setCurrentStaffId] = useState(CURRENT_STAFF_ID);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+
+  const currentStaff = useMemo(
+    () => staffList.find((s) => s.staff_id === currentStaffId) ?? staffList[0],
+    [currentStaffId],
+  );
 
   const selectedCandidate = useMemo(
     () => candidates.find((c) => c.id === selectedId) ?? null,
@@ -25,7 +34,7 @@ export default function App() {
 
   const showSaveNotice = useCallback((message: string) => {
     setSaveNotice(message);
-    window.setTimeout(() => setSaveNotice(null), 2000);
+    window.setTimeout(() => setSaveNotice(null), 2500);
   }, []);
 
   const updateCandidate = useCallback(
@@ -34,18 +43,27 @@ export default function App() {
         prev.map((c) => (c.id === id ? updater(c) : c)),
       );
     },
-  [],
+    [],
   );
 
   const handleSaveCandidate = useCallback(
     (updated: Candidate) => {
+      const duplicates = findDuplicateCandidates(updated, candidates).filter(
+        (d) => d.id !== updated.id,
+      );
       updateCandidate(updated.id, () => ({
         ...updated,
         updated_at: new Date().toISOString(),
       }));
-      showSaveNotice('保存しました');
+      if (duplicates.length > 0) {
+        showSaveNotice(
+          `保存しました（同一電話の候補者が ${duplicates.length} 件あります）`,
+        );
+      } else {
+        showSaveNotice('保存しました');
+      }
     },
-    [updateCandidate, showSaveNotice],
+    [candidates, updateCandidate, showSaveNotice],
   );
 
   const handleStatusChange = useCallback(
@@ -73,7 +91,7 @@ export default function App() {
             entry_id: `memo-${crypto.randomUUID().slice(0, 8)}`,
             occurred_at: now,
             contact_date: now.slice(0, 10),
-            author_staff_id: CURRENT_STAFF_ID,
+            author_staff_id: currentStaffId,
             body,
           },
           ...c.memos,
@@ -82,7 +100,7 @@ export default function App() {
       }));
       showSaveNotice('面談記録を追記しました');
     },
-    [updateCandidate, showSaveNotice],
+    [updateCandidate, currentStaffId, showSaveNotice],
   );
 
   const handleNewCandidate = useCallback(() => {
@@ -104,12 +122,26 @@ export default function App() {
     [candidates],
   );
 
+  const handleSelectCandidate = useCallback(
+    (id: string) => {
+      setSelectedId(id);
+      const cand = candidates.find((c) => c.id === id);
+      if (cand && globalSearch && !isArchivedStatus(cand.status)) {
+        setSelectedStatus(cand.status);
+      }
+    },
+    [candidates, globalSearch],
+  );
+
   const breadcrumbName =
     selectedCandidate?.pane3.display_name ?? '（未選択）';
 
-  const breadcrumbStatus = selectedCandidate && globalSearch
-    ? getStatusLabel(selectedCandidate.status)
-    : getStatusLabel(selectedStatus);
+  const breadcrumbStatus =
+    selectedCandidate && globalSearch
+      ? getStatusLabel(selectedCandidate.status)
+      : getStatusLabel(selectedStatus);
+
+  const isViewer = currentStaff.role === 'viewer';
 
   return (
     <div className="app">
@@ -122,6 +154,26 @@ export default function App() {
           <span className="current">{breadcrumbName}</span>
         </nav>
         <div className="header-actions">
+          <div className="staff-switcher">
+            <label htmlFor="staff-select" className="staff-label">
+              ログイン
+            </label>
+            <select
+              id="staff-select"
+              className="staff-select"
+              value={currentStaffId}
+              onChange={(e) => setCurrentStaffId(e.target.value)}
+            >
+              {staffList
+                .filter((s) => s.active)
+                .map((s) => (
+                  <option key={s.staff_id} value={s.staff_id}>
+                    {s.display_name}
+                  </option>
+                ))}
+            </select>
+            <RoleBadge staff={currentStaff} />
+          </div>
           <label className="global-search-toggle">
             <input
               type="checkbox"
@@ -130,9 +182,15 @@ export default function App() {
             />
             全体検索
           </label>
-          <button type="button" className="btn-header" onClick={handleNewCandidate}>
-            ＋ 新規登録
-          </button>
+          {!isViewer && (
+            <button
+              type="button"
+              className="btn-header"
+              onClick={handleNewCandidate}
+            >
+              ＋ 新規登録
+            </button>
+          )}
           {saveNotice && (
             <span className="save-notice" role="status">
               {saveNotice}
@@ -153,23 +211,23 @@ export default function App() {
           globalSearch={globalSearch}
           candidates={candidates}
           selectedId={selectedId}
-          onSelectCandidate={(id) => {
-            setSelectedId(id);
-            const cand = candidates.find((c) => c.id === id);
-            if (cand && globalSearch && !isArchivedStatus(cand.status)) {
-              setSelectedStatus(cand.status);
-            }
-          }}
+          onSelectCandidate={handleSelectCandidate}
         />
         <DetailPane
           candidate={selectedCandidate}
+          allCandidates={candidates}
+          role={currentStaff.role}
           onSave={handleSaveCandidate}
+          onSelectDuplicate={handleSelectCandidate}
         />
         <OperationPane
           candidate={selectedCandidate}
+          allCandidates={candidates}
+          role={currentStaff.role}
           onSave={handleSaveCandidate}
           onStatusChange={handleStatusChange}
           onAppendMemo={handleAppendMemo}
+          onSelectDuplicate={handleSelectCandidate}
         />
       </main>
     </div>
